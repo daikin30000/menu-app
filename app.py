@@ -1,59 +1,93 @@
 import streamlit as st
 import datetime
+import pandas as pd
+import os
 
-# 5月の献立リスト
-menu_list = [
-    "蒸しパンケーキ・ももゼリー・お茶・ごはん・たけのこごはん・五目汁・鮭の香り焼き・ひじきの煮物・オレンジゼリー・牛乳",
-    "ごはん・みそ汁（お麩とねぎ）・肉団子の甘辛煮・蛇の目サラダ・ソフトサラダせんべい・お茶",
-    "おやすみ",
-    "おやすみ",
-    "おやすみ",
-    "おやすみ",
-    "ごはん・にら玉汁・鱈のホイル焼き・野菜サラダ・フルーツポンチ・お茶",
-    "ごはん・コンソメスープ・厚揚げのカレー煮・中華サラダ・ミロフレンチトースト・牛乳",
-    "チャーハン・キャベツスープ・チキンナゲット・グレープゼリー・アンパンマンソフトせんべい・お茶",
-    "ごはん（海苔の佃煮）・みそ汁（えのきと玉子）・ちくわのチーズ揚げ・トマトのシーザーサラダ・バナナのスティックケーキ・牛乳",
-    "おやすみ",
-    "胚芽ごはん・すまし汁（なるととねぎ）・さばの塩焼き・小松菜のなめたけ和え（納豆）・かっぱえびせん・ミロ",
-    "ロールパン・コーンポタージュ・鶏肉の照り焼き・にんじんのごまサラダ・わかめおにぎり・お茶",
-    "ごはん・具だくさん汁・ほっけのみそ漬け・ラーメンサラダ・マシュマロヨーグルト・牛乳",
-    "ごはん・ドライカレー・ほうれん草の玉子サラダ・ブルーベリーゼリー・ホットケーキミックスブレッド・お茶",
-    "胚芽ごはん・麦ごはん・麦ごはん（ふりかけ）・焼肉丼・ごはん（納豆）・菜の花サンド",
-    "おやすみ",
-    "おやすみ",
-    "胚芽ごはん・わかめスープ・チンジャオロース・シルバーサラダ・お麩スナック・牛乳",
-    "麦ごはん・みそ汁（豆腐とわかめ）・鱈のケチャップ和え・ポテトサラダ・ミニ鯛焼き・牛乳",
-    "麦ごはん（ふりかけ）・みそ汁（玉ねぎと板麩）・すり身の春巻き揚げ・ささみと大根の梅肉サラダ・いも餅・牛乳",
-    "焼肉丼・オニオンスープ・ナムル・ソフールレモン・小豆のパウンドケーキ・牛乳",
-    "ごはん（納豆）・みそ汁（ふのりとねぎ）・肉じゃが・豆苗と玉子のサラダ・フルーツサンデー・お茶",
-    "菜の花サンド・チキンポトフ・フルーツキャロットゼリー・たべっこどうぶつ・牛乳",
-    "おやすみ",
-    "胚芽ごはん・みそ汁（わかめとねぎ）・すき焼き風煮・磯和え・フルーツヨーグルト・お茶",
-    "ロールパン・レタススープ・マカロニグラタン・ブロッコリーのおかか和え・焼き豚おにぎり・牛乳",
-    "わかめごはん・みそ汁（じゃがいもと絹さや）・エビフライ・ごぼうサラダ・ロールケーキ・ミロ",
-    "ごはん・みそ汁（大根と油揚げ）・千草焼き・炒め納豆・まがりせんべい・お茶",
-    "ごはん・チキンカレー・ミモザサラダ・元気ヨーグルト・お好み焼き・お茶",
-    "焼きそば・ポパイスープ・シュウマイ・青りんごゼリー・ベジたべる・お茶",
-]
+# --- 関数 ---
+@st.cache_data # ファイルの読み込み結果をキャッシュして高速化
+def load_menu_data(year: int, month: int) -> pd.DataFrame | None:
+    """指定された年月の献立CSVファイルを読み込み、DataFrameを返す"""
+    file_path = f"{year}{month:02d}.csv"
+    if not os.path.exists(file_path):
+        return None
+    try:
+        # CSVを読み込む。1列目(day)をインデックスとして使用する
+        df = pd.read_csv(file_path, index_col=0)
+        return df
+    except Exception as e:
+        st.error(f"ファイルの読み込み中にエラーが発生しました: {e}")
+        return None
 
-# UI
-st.title("献立表 (5月)")
-st.write("日付を選んで昨日・今日・明日の献立を見ましょう。")
+def format_menu_display(menu_string: str) -> str:
+    """献立の文字列を箇条書きのMarkdown形式に変換する"""
+    if pd.isna(menu_string) or menu_string.strip() == "":
+        return "データなし"
+    if menu_string.strip() == "おやすみ":
+        return "おやすみ"
+    
+    items = menu_string.split('・')
+    return "\n".join(f"- {item.strip()}" for item in items)
 
-input_date = st.date_input("日付を選択してください", value=datetime.date.today())
+# --- UI ---
+st.title("献立表アプリ")
+st.write("年月と日付を選んで、昨日・今日・明日の献立を見ましょう。")
 
-if input_date.month != 5:
-    st.warning("※5月以外は対象外です")
+# --- 年月選択 ---
+today = datetime.date.today()
+col1, col2 = st.columns(2)
+with col1:
+    # 年の選択。過去5年から未来1年までを選択肢にする
+    year_options = range(today.year - 5, today.year + 2)
+    selected_year = st.selectbox("年", options=year_options, index=list(year_options).index(today.year))
+with col2:
+    selected_month = st.selectbox("月", options=range(1, 13), index=today.month - 1)
+
+# --- 献立データ読み込み ---
+menu_df = load_menu_data(selected_year, selected_month)
+
+if menu_df is None:
+    st.error(f"{selected_year}年{selected_month}月の献立データが見つかりません。")
+    st.info(f"ヒント: アプリと同じフォルダに `{selected_year}{selected_month:02d}.csv` という名前のファイルを作成してください。")
 else:
-    day = input_date.day
-    yesterday = day - 1
-    today = day
-    tomorrow = day + 1
+    st.success(f"{selected_year}年{selected_month}月の献立を読み込みました。")
+    
+    # --- 日付選択 ---
+    first_day_of_month = datetime.date(selected_year, selected_month, 1)
+    # 月の最終日を安全に取得
+    if selected_month == 12:
+        last_day_of_month = datetime.date(selected_year, 12, 31)
+    else:
+        last_day_of_month = datetime.date(selected_year, selected_month + 1, 1) - datetime.timedelta(days=1)
 
-    for label, d in zip(["昨日", "今日", "明日"], [yesterday, today, tomorrow]):
-        if 1 <= d <= len(menu_list):
-            st.subheader(f"{label}（5月{d}日）")
-            st.write(menu_list[d-1])
+    # 今日の日付が選択された月と同じなら今日を、違うならその月の1日をデフォルトに
+    if today.year == selected_year and today.month == selected_month:
+        default_date = today
+    else:
+        default_date = first_day_of_month
+
+    input_date = st.date_input(
+        "日付を選択してください",
+        value=default_date,
+        min_value=first_day_of_month,
+        max_value=last_day_of_month,
+    )
+
+    # --- 献立表示 ---
+    yesterday_date = input_date - datetime.timedelta(days=1)
+    tomorrow_date = input_date + datetime.timedelta(days=1)
+
+    for label, date_obj in [("昨日", yesterday_date), ("今日", input_date), ("明日", tomorrow_date)]:
+        st.subheader(f"{label}（{date_obj.month}月{date_obj.day}日）")
+        
+        # 選択された月と同じ月のデータのみ表示
+        if date_obj.month == selected_month:
+            try:
+                # DataFrameから日付(インデックス)で献立を取得
+                menu = menu_df.loc[date_obj.day, 'menu']
+                st.markdown(format_menu_display(menu))
+            except KeyError:
+                # DataFrameにその日のデータがない場合
+                st.info("献立データがありません")
         else:
-            st.subheader(f"{label}（5月{d}日）")
-            st.write("データなし")
+            # 月が違う場合はデータなし
+            st.info("献立データがありません")
