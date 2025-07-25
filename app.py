@@ -41,6 +41,7 @@ JST = timezone(datetime.timedelta(hours=+9), 'JST')
 input_date = st.date_input(
     "日付を選択してください",
     value=datetime.datetime.now(JST).date(),
+    label_visibility="collapsed"
 )
 
 # --- 献立表示 ---
