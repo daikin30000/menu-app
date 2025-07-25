@@ -1,5 +1,6 @@
 import streamlit as st
 import datetime
+from datetime import timezone
 import pandas as pd
 import os
 
@@ -7,7 +8,7 @@ import os
 @st.cache_data # ファイルの読み込み結果をキャッシュして高速化
 def load_menu_data(year: int, month: int) -> pd.DataFrame | None:
     """指定された年月の献立CSVファイルを読み込み、DataFrameを返す"""
-    file_path = f"{year}{month:02d}.csv"
+    file_path = os.path.join("csv", f"{year}{month:02d}.csv")
     if not os.path.exists(file_path):
         return None
     try:
@@ -32,10 +33,14 @@ def format_menu_display(menu_string: str) -> str:
 st.title("献立表アプリ")
 st.write("カレンダーから日付を選んで、昨日・今日・明日の献立を見ましょう。")
 
+# --- タイムゾーン設定 ---
+# 日本標準時(JST)を定義。サーバーの場所に関わらず日本の日付を基準にするため。
+JST = timezone(datetime.timedelta(hours=+9), 'JST')
+
 # --- 日付選択 ---
 input_date = st.date_input(
     "日付を選択してください",
-    value=datetime.date.today(),
+    value=datetime.datetime.now(JST).date(),
 )
 
 # --- 献立表示 ---
